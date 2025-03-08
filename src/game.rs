@@ -77,7 +77,13 @@ pub fn run() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
-                _ => {}
+                _ => {
+                    if let Event::KeyDown { keycode, .. } = event {
+                        if let Some(key) = keycode {
+                            game.keypress(key);
+                        }
+                    }
+                }
             }
         }
         // The rest of the game loop goes here...

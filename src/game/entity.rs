@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use sdl2::keyboard::Keycode;
+
 #[derive(Debug, PartialEq)]
 enum Direction {
     Up,
@@ -30,7 +32,7 @@ impl Game {
             grid,
             food,
             snake,
-            speed: 1000,
+            speed: 5000,
         }
     }
     pub fn tick(&mut self) {
@@ -38,6 +40,19 @@ impl Game {
         if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
             self.snake.eat();
             self.food = Food::new(self.grid.clone());
+        }
+    }
+    pub fn keypress(&mut self, key: Keycode) {
+        match key {
+            Keycode::Up => self.snake.cd(Direction::Up),
+            Keycode::W => self.snake.cd(Direction::Up),
+            Keycode::Down => self.snake.cd(Direction::Down),
+            Keycode::S => self.snake.cd(Direction::Down),
+            Keycode::Left => self.snake.cd(Direction::Left),
+            Keycode::A => self.snake.cd(Direction::Left),
+            Keycode::Right => self.snake.cd(Direction::Right),
+            Keycode::D => self.snake.cd(Direction::Right),
+            _ => {}
         }
     }
 }
