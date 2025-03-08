@@ -107,7 +107,20 @@ impl Snake {
     }
 
     /// Change the direction of the snake
+    /// The snake can't go in the opposite direction
     fn cd(&mut self, direction: Direction) {
+        if self.direction == Direction::Up && direction == Direction::Down {
+            return;
+        }
+        if self.direction == Direction::Down && direction == Direction::Up {
+            return;
+        }
+        if self.direction == Direction::Left && direction == Direction::Right {
+            return;
+        }
+        if self.direction == Direction::Right && direction == Direction::Left {
+            return;
+        }
         self.direction = direction;
     }
 
