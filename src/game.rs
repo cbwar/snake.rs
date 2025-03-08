@@ -1,9 +1,91 @@
 mod entity;
+mod sound;
 
-use std::{rc::Rc, sync::{Arc, Mutex}, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
-use entity::{Food, Game, Grid, Snake, Style};
+use entity::{Block, Direction, Food, Grid, Snake, Style};
+use rodio::{OutputStream, OutputStreamHandle};
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::WindowCanvas};
+
+#[derive(Debug)]
+pub struct Game {
+    pub grid: Arc<Grid>,   // Grid size
+    pub style: Arc<Style>, // Game style
+    pub food: Food,        // Food position on the screen
+    pub snake: Snake,      // Snake
+    pub score: u32,        // Score of the game
+}
+
+impl Game {
+    pub fn new(grid: Arc<Grid>, style: Arc<Style>) -> Game {
+        let snake = Snake::new(grid.clone());
+        let food = Food::new(grid.clone());
+
+        Game {
+            grid,
+            style,
+            food,
+            snake,
+            score: 0,
+        }
+    }
+
+    pub fn tick(&mut self, stream_handle: &OutputStreamHandle) -> u32 {
+        self.snake.update(self.grid.clone());
+
+        let level = self.calculate_level();
+        let speed = self.calculate_speed();
+        let score = self.score;
+
+        println!("Game: Tick (score={score} level={level} speed={speed})");
+        if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
+            self.snake.eat();
+            self.food = Food::new(self.grid.clone());
+            self.score += 1;
+            sound::play_snd(stream_handle).unwrap();
+        }
+        speed
+    }
+
+    pub fn keypress(&mut self, key: Keycode) {
+        match key {
+            Keycode::Up => self.snake.cd(Direction::Up),
+            Keycode::W => self.snake.cd(Direction::Up),
+            Keycode::Down => self.snake.cd(Direction::Down),
+            Keycode::S => self.snake.cd(Direction::Down),
+            Keycode::Left => self.snake.cd(Direction::Left),
+            Keycode::A => self.snake.cd(Direction::Left),
+            Keycode::Right => self.snake.cd(Direction::Right),
+            Keycode::D => self.snake.cd(Direction::Right),
+            _ => {}
+        }
+    }
+    ///
+    /// Calculate the level of the game based on the score
+    /// A level is gained every 10 points
+    ///
+    fn calculate_level(&self) -> u32 {
+        self.score / 10
+    }
+
+    ///
+    /// Calculate the speed of the game based on the score
+    /// The speed is increased every level
+    /// The starting speed is 70 and the maximum speed is 10
+
+    fn calculate_speed(&self) -> u32 {
+        let level = self.calculate_level();
+        let speed = 70 - (level * 10);
+        if speed < 10 {
+            10
+        } else {
+            speed
+        }
+    }
+}
 
 trait Drawable {
     fn draw(&self, canvas: &mut WindowCanvas, color: Option<&Color>);
@@ -66,6 +148,8 @@ pub fn run() {
 
     let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
 
+    let (_stream, snd_stream_handle) = OutputStream::try_default().unwrap();
+
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
@@ -80,9 +164,7 @@ pub fn run() {
 
     let _timer = timer_subsystem.add_timer(
         0,
-        Box::new(|| {
-            game.lock().unwrap().tick()
-        }),
+        Box::new(|| game.lock().unwrap().tick(&snd_stream_handle)),
     );
 
     'running: loop {
@@ -111,5 +193,24 @@ pub fn run() {
         canvas.present();
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+    }
+}
+
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_calculate_game_level() {
+        let grid = Arc::new(Grid(10, 10));
+        let style = Arc::new(Style::default());
+        let mut game = Game::new(grid, style);
+        assert_eq!(game.calculate_level(), 0);
+        game.score = 5;
+        assert_eq!(game.calculate_level(), 0);
+        game.score = 10;
+        assert_eq!(game.calculate_level(), 1);
+        game.score = 50;
+        assert_eq!(game.calculate_level(), 5);
     }
 }

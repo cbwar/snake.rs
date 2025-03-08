@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use sdl2::{keyboard::Keycode, pixels::Color};
+use sdl2::pixels::Color;
 
 #[derive(Debug, PartialEq)]
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -33,88 +33,13 @@ impl Style {
 }
 
 #[derive(Debug)]
-pub struct Game {
-    pub grid: Arc<Grid>,   // Grid size
-    pub style: Arc<Style>, // Game style
-    pub food: Food,        // Food position on the screen
-    pub snake: Snake,      // Snake
-    pub score: u32,        // Score of the game
-}
-
-impl Game {
-    pub fn new(grid: Arc<Grid>, style: Arc<Style>) -> Game {
-        let snake = Snake::new(grid.clone());
-        let food = Food::new(grid.clone());
-        Game {
-            grid,
-            style,
-            food,
-            snake,
-            score: 0,
-        }
-    }
-
-    pub fn tick(&mut self) -> u32 {
-        self.snake.update(self.grid.clone());
-
-        let level = self.calculate_level();
-        let speed = self.calculate_speed();
-        let score = self.score;
-
-        println!("Game: Tick (score={score} level={level} speed={speed})");
-        if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
-            self.snake.eat();
-            self.food = Food::new(self.grid.clone());
-            self.score += 1;
-        }
-        speed
-    }
-
-    pub fn keypress(&mut self, key: Keycode) {
-        match key {
-            Keycode::Up => self.snake.cd(Direction::Up),
-            Keycode::W => self.snake.cd(Direction::Up),
-            Keycode::Down => self.snake.cd(Direction::Down),
-            Keycode::S => self.snake.cd(Direction::Down),
-            Keycode::Left => self.snake.cd(Direction::Left),
-            Keycode::A => self.snake.cd(Direction::Left),
-            Keycode::Right => self.snake.cd(Direction::Right),
-            Keycode::D => self.snake.cd(Direction::Right),
-            _ => {}
-        }
-    }
-    ///
-    /// Calculate the level of the game based on the score
-    /// A level is gained every 10 points
-    ///
-    fn calculate_level(&self) -> u32 {
-        self.score / 10
-    }
-
-    ///
-    /// Calculate the speed of the game based on the score
-    /// The speed is increased every level
-    /// The starting speed is 70 and the maximum speed is 10
-
-    fn calculate_speed(&self) -> u32 {
-  
-        let level = self.calculate_level();
-        let speed = 70 - (level * 10);
-        if speed < 10 {
-            10
-        } else {
-            speed
-        }
-    }
-}
-#[derive(Debug)]
 pub struct Snake {
     pub body: Vec<Block>, // Snake body position on the screen
     direction: Direction, // Direction the snake is moving
     eat: bool,            // If the snake has eaten the food
 }
 impl Snake {
-    fn new(grid: Arc<Grid>) -> Snake {
+    pub fn new(grid: Arc<Grid>) -> Snake {
         Snake {
             body: vec![
                 Block(grid.0 / 2, grid.1 / 2),
@@ -127,7 +52,7 @@ impl Snake {
     }
 
     /// Update the snake position / next tick
-    fn update(&mut self, grid: Arc<Grid>) {
+    pub fn update(&mut self, grid: Arc<Grid>) {
         let Block(head_x, head_y) = self.body[0];
 
         // Create a new head based on the current direction of the snake
@@ -159,7 +84,7 @@ impl Snake {
 
     /// Change the direction of the snake
     /// The snake can't go in the opposite direction
-    fn cd(&mut self, direction: Direction) {
+    pub fn cd(&mut self, direction: Direction) {
         if self.direction == Direction::Up && direction == Direction::Down {
             return;
         }
@@ -176,7 +101,7 @@ impl Snake {
         self.direction = direction;
     }
 
-    fn eat(&mut self) {
+    pub fn eat(&mut self) {
         self.eat = true;
         println!("Snake: Eating something");
     }
@@ -187,7 +112,7 @@ pub struct Food {
     pub position: (i32, i32), // Food position on the screen
 }
 impl Food {
-    fn new(grid: Arc<Grid>) -> Food {
+    pub fn new(grid: Arc<Grid>) -> Food {
         // Randomize the position of the food
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -304,17 +229,4 @@ mod tests {
         assert_eq!(food.position.1, 0);
     }
 
-    #[test]
-    fn test_calculate_game_level() {
-        let grid = Arc::new(Grid(10, 10));
-        let style = Arc::new(Style::default());
-        let mut game = Game::new(grid, style);
-        assert_eq!(game.calculate_level(), 0);
-        game.score = 5;
-        assert_eq!(game.calculate_level(), 0);
-        game.score = 10;
-        assert_eq!(game.calculate_level(), 1);
-        game.score = 50;
-        assert_eq!(game.calculate_level(), 5);
-    }
 }
