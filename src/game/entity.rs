@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
-use sdl2::keyboard::Keycode;
+use sdl2::{keyboard::Keycode, pixels::Color};
 
 #[derive(Debug, PartialEq)]
 enum Direction {
@@ -16,32 +16,54 @@ pub struct Block(pub i32, pub i32);
 #[derive(Debug, PartialEq)]
 pub struct Grid(pub i32, pub i32);
 
+#[derive(Debug, PartialEq)]
+pub struct Style {
+    pub background: Color,
+    pub snake: Color,
+    pub food: Color,
+}
+impl Style {
+    pub fn default() -> Style {
+        Style {
+            background: Color::RGB(0, 0, 0),
+            snake: Color::RGB(0, 255, 0),
+            food: Color::RGB(255, 0, 0),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Game {
-    pub grid: Rc<Grid>, // Grid size
-    pub food: Food,     // Food position on the screen
-    pub snake: Snake,   // Snake
-    pub speed: u32,     // Speed of the game
+    pub grid: Arc<Grid>,   // Grid size
+    pub style: Arc<Style>, // Game style
+    pub food: Food,        // Food position on the screen
+    pub snake: Snake,      // Snake
+    pub speed: u32,        // Speed of the game
 }
 
 impl Game {
-    pub fn new(grid: Rc<Grid>) -> Game {
+    pub fn new(grid: Arc<Grid>, style: Arc<Style>) -> Game {
         let snake = Snake::new(grid.clone());
         let food = Food::new(grid.clone());
         Game {
             grid,
+            style,
             food,
             snake,
-            speed: 5000,
+            speed: 50,
         }
     }
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> u32 {
         self.snake.update(self.grid.clone());
+        println!("Game: Tick");
         if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
             self.snake.eat();
             self.food = Food::new(self.grid.clone());
+            self.speed -= 4;
         }
+        self.speed
     }
+
     pub fn keypress(&mut self, key: Keycode) {
         match key {
             Keycode::Up => self.snake.cd(Direction::Up),
@@ -63,7 +85,7 @@ pub struct Snake {
     eat: bool,            // If the snake has eaten the food
 }
 impl Snake {
-    fn new(grid: Rc<Grid>) -> Snake {
+    fn new(grid: Arc<Grid>) -> Snake {
         Snake {
             body: vec![
                 Block(grid.0 / 2, grid.1 / 2),
@@ -76,7 +98,7 @@ impl Snake {
     }
 
     /// Update the snake position / next tick
-    fn update(&mut self, grid: Rc<Grid>) {
+    fn update(&mut self, grid: Arc<Grid>) {
         let Block(head_x, head_y) = self.body[0];
 
         // Create a new head based on the current direction of the snake
@@ -136,7 +158,7 @@ pub struct Food {
     pub position: (i32, i32), // Food position on the screen
 }
 impl Food {
-    fn new(grid: Rc<Grid>) -> Food {
+    fn new(grid: Arc<Grid>) -> Food {
         // Randomize the position of the food
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -153,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_snake_new() {
-        let grid = Rc::new(Grid(80, 60));
+        let grid = Arc::new(Grid(80, 60));
         let snake = Snake::new(grid);
         assert_eq!(snake.body.len(), 3);
         assert_eq!(snake.direction, Direction::Left);
@@ -161,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_snake_update() {
-        let grid = Rc::new(Grid(80, 60));
+        let grid = Arc::new(Grid(80, 60));
         let mut snake = Snake::new(grid.clone());
 
         assert_eq!(snake.body[0], Block(40, 30));
@@ -177,7 +199,7 @@ mod tests {
     }
     #[test]
     fn test_snake_cd() {
-        let grid = Rc::new(Grid(80, 60));
+        let grid = Arc::new(Grid(80, 60));
         let mut snake = Snake::new(grid.clone());
 
         assert_eq!(snake.body[0], Block(40, 30));
@@ -195,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_snake_eat() {
-        let grid = Rc::new(Grid(80, 60));
+        let grid = Arc::new(Grid(80, 60));
         let mut snake = Snake::new(grid.clone());
 
         assert_eq!(snake.body.len(), 3);
@@ -219,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_snake_mode_edge() {
-        let grid = Rc::new(Grid(10, 10));
+        let grid = Arc::new(Grid(10, 10));
         let mut snake = Snake::new(grid.clone());
 
         assert_eq!(snake.body.len(), 3);
@@ -238,7 +260,7 @@ mod tests {
     }
     #[test]
     fn test_create_food() {
-        let grid = Rc::new(Grid(10, 10));
+        let grid = Arc::new(Grid(10, 10));
         let food = Food::new(grid.clone());
         assert_eq!(food.position.0 >= 0, true);
         assert_eq!(food.position.0 < grid.0, true);
@@ -247,7 +269,7 @@ mod tests {
     }
     #[test]
     fn test_create_food_with_empty_screen() {
-        let grid = Rc::new(Grid(1, 1));
+        let grid = Arc::new(Grid(1, 1));
         let food = Food::new(grid.clone());
         assert_eq!(food.position.0, 0);
         assert_eq!(food.position.1, 0);
