@@ -88,14 +88,14 @@ impl Snake {
         };
 
         // handle the snake going out of bounds
-        if new_head.0 > grid.0 {
+        if new_head.0 >= grid.0 {
             new_head.0 = 0;
         } else if new_head.0 < 0 {
-            new_head.0 = grid.0;
-        } else if new_head.1 > grid.1 {
+            new_head.0 = grid.0 - 1;
+        } else if new_head.1 >= grid.1 {
             new_head.1 = 0;
         } else if new_head.1 < 0 {
-            new_head.1 = grid.1;
+            new_head.1 = grid.1 - 1;
         }
 
         self.body.insert(0, new_head); // Insert new head
@@ -121,15 +121,13 @@ impl Snake {
         if self.direction == Direction::Right && direction == Direction::Left {
             return;
         }
+        println!("Snake: Direction changed to {:?}", direction);
         self.direction = direction;
     }
 
     fn eat(&mut self) {
         self.eat = true;
-    }
-
-    fn get_body(&self) -> &Vec<Block> {
-        &self.body
+        println!("Snake: Eating something");
     }
 }
 
@@ -139,8 +137,12 @@ pub struct Food {
 }
 impl Food {
     fn new(grid: Rc<Grid>) -> Food {
-        // Todo randomize the position of the food
-        Food { position: (5, 5) }
+        // Randomize the position of the food
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let x = rng.gen_range(0..grid.0);
+        let y = rng.gen_range(0..grid.1);
+        Food { position: (x, y) }
     }
 }
 
@@ -213,5 +215,41 @@ mod tests {
         assert_eq!(snake.body[1], Block(40, 30));
         assert_eq!(snake.body[2], Block(41, 30));
         assert_eq!(snake.body[3], Block(42, 30));
+    }
+
+    #[test]
+    fn test_snake_mode_edge() {
+        let grid = Rc::new(Grid(10, 10));
+        let mut snake = Snake::new(grid.clone());
+
+        assert_eq!(snake.body.len(), 3);
+        assert_eq!(snake.body[0], Block(5, 5));
+        assert_eq!(snake.body[1], Block(6, 5));
+        assert_eq!(snake.body[2], Block(7, 5));
+        snake.update(grid.clone());
+        snake.update(grid.clone());
+        snake.update(grid.clone());
+        snake.update(grid.clone());
+        snake.update(grid.clone());
+        snake.update(grid.clone());
+        assert_eq!(snake.body[0], Block(9, 5));
+        assert_eq!(snake.body[1], Block(0, 5));
+        assert_eq!(snake.body[2], Block(1, 5));
+    }
+    #[test]
+    fn test_create_food() {
+        let grid = Rc::new(Grid(10, 10));
+        let food = Food::new(grid.clone());
+        assert_eq!(food.position.0 >= 0, true);
+        assert_eq!(food.position.0 < grid.0, true);
+        assert_eq!(food.position.1 >= 0, true);
+        assert_eq!(food.position.1 < grid.1, true);
+    }
+    #[test]
+    fn test_create_food_with_empty_screen() {
+        let grid = Rc::new(Grid(1, 1));
+        let food = Food::new(grid.clone());
+        assert_eq!(food.position.0, 0);
+        assert_eq!(food.position.1, 0);
     }
 }
