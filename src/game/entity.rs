@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use sdl2::{keyboard::Keycode, pixels::Color};
 
@@ -38,7 +38,7 @@ pub struct Game {
     pub style: Arc<Style>, // Game style
     pub food: Food,        // Food position on the screen
     pub snake: Snake,      // Snake
-    pub speed: u32,        // Speed of the game
+    pub score: u32,        // Score of the game
 }
 
 impl Game {
@@ -50,18 +50,24 @@ impl Game {
             style,
             food,
             snake,
-            speed: 50,
+            score: 0,
         }
     }
+
     pub fn tick(&mut self) -> u32 {
         self.snake.update(self.grid.clone());
-        println!("Game: Tick");
+
+        let level = self.calculate_level();
+        let speed = self.calculate_speed();
+        let score = self.score;
+
+        println!("Game: Tick (score={score} level={level} speed={speed})");
         if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
             self.snake.eat();
             self.food = Food::new(self.grid.clone());
-            self.speed -= 4;
+            self.score += 1;
         }
-        self.speed
+        speed
     }
 
     pub fn keypress(&mut self, key: Keycode) {
@@ -75,6 +81,29 @@ impl Game {
             Keycode::Right => self.snake.cd(Direction::Right),
             Keycode::D => self.snake.cd(Direction::Right),
             _ => {}
+        }
+    }
+    ///
+    /// Calculate the level of the game based on the score
+    /// A level is gained every 10 points
+    ///
+    fn calculate_level(&self) -> u32 {
+        self.score / 10
+    }
+
+    ///
+    /// Calculate the speed of the game based on the score
+    /// The speed is increased every level
+    /// The starting speed is 70 and the maximum speed is 10
+
+    fn calculate_speed(&self) -> u32 {
+  
+        let level = self.calculate_level();
+        let speed = 70 - (level * 10);
+        if speed < 10 {
+            10
+        } else {
+            speed
         }
     }
 }
@@ -273,5 +302,19 @@ mod tests {
         let food = Food::new(grid.clone());
         assert_eq!(food.position.0, 0);
         assert_eq!(food.position.1, 0);
+    }
+
+    #[test]
+    fn test_calculate_game_level() {
+        let grid = Arc::new(Grid(10, 10));
+        let style = Arc::new(Style::default());
+        let mut game = Game::new(grid, style);
+        assert_eq!(game.calculate_level(), 0);
+        game.score = 5;
+        assert_eq!(game.calculate_level(), 0);
+        game.score = 10;
+        assert_eq!(game.calculate_level(), 1);
+        game.score = 50;
+        assert_eq!(game.calculate_level(), 5);
     }
 }
