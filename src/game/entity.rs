@@ -103,12 +103,16 @@ impl Snake {
         self.eat += self.config.size_increase_per_food;
         println!("Snake: Eating something");
     }
+
+    pub fn head(&self) -> &Block {
+        &self.body[0]
+    }
 }
 
 #[derive(Debug)]
 pub struct Food {
-    pub position: (u32, u32), // Food position on the screen
-    pub config: Arc<Config>,  // Game config
+    pub position: Block,     // Food position on the screen
+    pub config: Arc<Config>, // Game config
 }
 impl Food {
     pub fn new(config: Arc<Config>) -> Food {
@@ -118,7 +122,7 @@ impl Food {
         let x = rng.gen_range(0..config.grid_size.0);
         let y = rng.gen_range(0..config.grid_size.1);
         Food {
-            position: (x, y),
+            position: Block(x, y),
             config,
         }
     }
@@ -174,11 +178,14 @@ mod tests {
         assert_eq!(snake.body.len(), 1);
         assert_eq!(snake.direction, Direction::Left);
         assert_eq!(snake.eat, 3);
+        assert_eq!(snake.head(), &Block(40, 30));
     }
 
     #[test]
     fn test_snake_update() {
         let config = Arc::new(Config {
+            grid_size: (80, 60),
+            starting_position: (40, 30),
             initial_size: 2,
             ..Config::default()
         });
@@ -270,7 +277,6 @@ mod tests {
         snake.cd(Direction::Up);
         snake.update();
         assert_eq!(snake.body[0], Block(9, 9));
-
     }
     #[test]
     fn test_create_food() {

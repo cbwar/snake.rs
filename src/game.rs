@@ -15,7 +15,7 @@ use sound::{Sound, SoundSystem};
 pub struct Game {
     pub config: Arc<Config>,      // Game config
     pub snd: Option<SoundSystem>, // Sound system
-    pub food: Food,               // Food position on the screen
+    pub food: Option<Food>,       // Food position on the screen
     pub snake: Snake,             // Snake
     pub score: u32,               // Score of the game
 }
@@ -33,15 +33,21 @@ impl Game {
     pub fn new(config: Config, snd: Option<SoundSystem>) -> Game {
         let config = Arc::new(config);
         let snake = Snake::new(config.clone());
-        let food = Food::new(config.clone());
 
         Game {
             config,
             snd,
-            food,
+            food: None,
             snake,
             score: 0,
         }
+    }
+
+    pub fn setup(&mut self) {
+        println!("Game: Setup");
+        println!("Game: Config={:?}", self.config);
+        self.play_snd(Sound::Start);
+        self.create_food();
     }
 
     pub fn tick(&mut self) -> u32 {
@@ -52,7 +58,9 @@ impl Game {
         let score = self.score;
 
         println!("Game: Tick (score={score} level={level} speed={speed})");
-        if self.snake.body[0] == Block(self.food.position.0, self.food.position.1) {
+
+        // Check if the snake has eaten the food
+        if self.eating_food() {
             self.snake.eat();
             self.create_food();
             self.score += 1;
@@ -76,7 +84,15 @@ impl Game {
     }
 
     pub fn create_food(&mut self) {
-        self.food = Food::new(self.config.clone());
+        self.food = Some(Food::new(self.config.clone()));
+    }
+
+    pub fn eating_food(&mut self) -> bool {
+        match self.food {
+            None => false,
+            Some(ref food) => self.snake.head() == &food.position,
+        }
+
     }
 
     /// Play a sound
@@ -158,7 +174,9 @@ impl Drawable for Game {
         canvas.set_draw_color(*color);
         canvas.clear();
         self.snake.draw(canvas);
-        self.food.draw(canvas);
+        if let Some(ref food) = self.food {
+            food.draw(canvas);
+        }
     }
 }
 
@@ -209,18 +227,14 @@ pub fn run() {
     // let mut i = 0;
 
     let game = Arc::new(Mutex::new(Game::new(game_config, Some(snd))));
-
-    println!("Game started");
-    println!("{:?}", game);
+    game.lock().unwrap().setup();
 
     let _timer = timer_subsystem.add_timer(0, Box::new(|| game.lock().unwrap().tick()));
-
-    game.lock().unwrap().play_snd(Sound::Start);
 
     'running: loop {
         // i = (i + 1) % 255;
         // canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
-        canvas.clear();
+        // canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
