@@ -7,33 +7,36 @@ use std::{
 };
 
 use entity::{Block, Direction, Food, Grid, Snake, Style};
-use rodio::{OutputStream, OutputStreamHandle};
+use rodio::OutputStream;
 use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::WindowCanvas};
+use sound::{Sound, SoundSystem};
 
 #[derive(Debug)]
 pub struct Game {
-    pub grid: Arc<Grid>,   // Grid size
-    pub style: Arc<Style>, // Game style
-    pub food: Food,        // Food position on the screen
-    pub snake: Snake,      // Snake
-    pub score: u32,        // Score of the game
+    pub grid: Arc<Grid>,          // Grid size
+    pub style: Arc<Style>,        // Game style
+    pub snd: Option<SoundSystem>, // Sound system
+    pub food: Food,               // Food position on the screen
+    pub snake: Snake,             // Snake
+    pub score: u32,               // Score of the game
 }
 
 impl Game {
-    pub fn new(grid: Arc<Grid>, style: Arc<Style>) -> Game {
+    pub fn new(grid: Arc<Grid>, style: Arc<Style>, snd: Option<SoundSystem>) -> Game {
         let snake = Snake::new(grid.clone());
         let food = Food::new(grid.clone());
 
         Game {
             grid,
             style,
+            snd,
             food,
             snake,
             score: 0,
         }
     }
 
-    pub fn tick(&mut self, stream_handle: &OutputStreamHandle) -> u32 {
+    pub fn tick(&mut self) -> u32 {
         self.snake.update(self.grid.clone());
 
         let level = self.calculate_level();
@@ -45,7 +48,7 @@ impl Game {
             self.snake.eat();
             self.food = Food::new(self.grid.clone());
             self.score += 1;
-            sound::play_snd(stream_handle).unwrap();
+            self.play_snd(Sound::Eat);
         }
         speed
     }
@@ -63,6 +66,15 @@ impl Game {
             _ => {}
         }
     }
+
+    /// Play a sound
+    pub fn play_snd(&self, sound: Sound) {
+        match self.snd {
+            None => return,
+            Some(ref snd) => snd.play_snd(sound).expect("Failed to play sound"),
+        }
+    }
+
     ///
     /// Calculate the level of the game based on the score
     /// A level is gained every 10 points
@@ -148,24 +160,30 @@ pub fn run() {
 
     let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
 
-    let (_stream, snd_stream_handle) = OutputStream::try_default().unwrap();
+    // Initialize sound system
+    let (_stream, stream_handle) =
+        OutputStream::try_default().expect("Output stream failed to open");
+    let snd = sound::SoundSystem::new(stream_handle);
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut i = 0;
+    // let mut i = 0;
 
-    let mut style = Arc::new(Style::default());
-    let mut game = Arc::new(Mutex::new(Game::new(grid.clone(), style.clone())));
+    let style = Arc::new(Style::default());
+    let game = Arc::new(Mutex::new(Game::new(
+        grid.clone(),
+        style.clone(),
+        Some(snd),
+    )));
 
     println!("Game started");
     println!("{:?}", game);
 
-    let _timer = timer_subsystem.add_timer(
-        0,
-        Box::new(|| game.lock().unwrap().tick(&snd_stream_handle)),
-    );
+    let _timer = timer_subsystem.add_timer(0, Box::new(|| game.lock().unwrap().tick()));
+
+    game.lock().unwrap().play_snd(Sound::Start);
 
     'running: loop {
         // i = (i + 1) % 255;
@@ -204,7 +222,7 @@ mod tests {
     fn test_calculate_game_level() {
         let grid = Arc::new(Grid(10, 10));
         let style = Arc::new(Style::default());
-        let mut game = Game::new(grid, style);
+        let mut game = Game::new(grid, style, None);
         assert_eq!(game.calculate_level(), 0);
         game.score = 5;
         assert_eq!(game.calculate_level(), 0);
