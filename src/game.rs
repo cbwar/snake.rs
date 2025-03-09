@@ -8,7 +8,7 @@ use std::{
 
 use entity::{Config, Direction, Food, Snake};
 use rodio::OutputStream;
-use sdl2::{event::Event, keyboard::Keycode, rect::Rect, render::WindowCanvas};
+use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::WindowCanvas};
 use sound::{Sound, SoundSystem};
 
 #[derive(Debug)]
@@ -22,7 +22,6 @@ pub struct Game {
     pub speed: u32,               // Speed of the game
 }
 ///
-/// TODO: Show Score panel
 /// TODO: Handle collision with the snake body
 /// TODO: The snake grows 3 blocks when eating food
 /// TODO: Add walls to the game (map?)
@@ -72,7 +71,7 @@ impl Game {
     }
 
     /// Handle snake collision
-    /// 
+    ///
     /// The snake can't collide with itself
     fn handle_collisions(&mut self) {
         let head = self.snake.head();
@@ -153,6 +152,14 @@ impl Game {
             speed as u32
         }
     }
+
+    ///
+    /// Get the status text of the game
+    /// 
+    fn get_status_text(&self) -> String {
+        format!("Score: {} Level: {}", self.score, self.level)
+    }
+
 }
 
 trait Drawable {
@@ -216,10 +223,14 @@ impl Drawable for Game {
 ///
 /// Main game loop
 ///
-pub fn run() {
+pub fn run() -> Result<(), String> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let timer_subsystem = sdl_context.timer().unwrap();
+    let ttf_context = sdl2::ttf::init().unwrap();
+
+    let mut font = ttf_context.load_font("resources/COUR.TTF", 20)?;
+    font.set_style(sdl2::ttf::FontStyle::BOLD);
 
     let game_config = Config {
         initial_speed: 100,
@@ -241,6 +252,7 @@ pub fn run() {
         .unwrap();
 
     let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
+    let texture_creator = canvas.texture_creator();
 
     // Initialize sound system
     let (_stream, stream_handle) =
@@ -281,10 +293,26 @@ pub fn run() {
         // The rest of the game loop goes here...
         game.lock().unwrap().draw(&mut canvas);
 
+
+        // render a surface, and convert it to a texture bound to the canvas
+        let surface = font
+            .render(game.lock().unwrap().get_status_text().as_str())
+            .blended(Color::RGBA(255, 255,255, 200))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+    
+        let dest = Rect::new(0, 0, surface.width(), surface.height());
+    
+        canvas.copy(&texture, None, Some(dest))?;
+
         canvas.present();
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
+
+    Ok(())
 }
 
 mod tests {
