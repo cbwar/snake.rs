@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use entity::{Block, Config, Direction, Food, Snake};
+use entity::{Config, Direction, Food, Snake};
 use rodio::OutputStream;
 use sdl2::{event::Event, keyboard::Keycode, rect::Rect, render::WindowCanvas};
 use sound::{Sound, SoundSystem};
@@ -18,6 +18,8 @@ pub struct Game {
     pub food: Option<Food>,       // Food position on the screen
     pub snake: Snake,             // Snake
     pub score: u32,               // Score of the game
+    pub level: u32,               // Level of the game
+    pub speed: u32,               // Speed of the game
 }
 ///
 /// TODO: Show Score panel
@@ -31,18 +33,19 @@ pub struct Game {
 /// TODO: Save high score
 /// TODO: Game menu screed
 ///
-///
 impl Game {
     pub fn new(config: Config, snd: Option<SoundSystem>) -> Game {
         let config = Arc::new(config);
         let snake = Snake::new(config.clone());
-
+        let speed = config.initial_speed;
         Game {
             config,
             snd,
             food: None,
             snake,
             score: 0,
+            level: 0,
+            speed,
         }
     }
 
@@ -53,23 +56,46 @@ impl Game {
         self.create_food();
     }
 
+    ///
+    /// Handle food collision
+    ///
+    fn handle_food_eat(&mut self) {
+        if !self.eating_food() {
+            return;
+        }
+        self.level = self.calculate_level();
+        self.speed = self.calculate_speed();
+        self.snake.eat();
+        self.create_food();
+        self.score += 1;
+        self.play_snd(Sound::Eat);
+    }
+
+    /// Handle snake collision
+    /// 
+    /// The snake can't collide with itself
+    fn handle_collisions(&mut self) {
+        let head = self.snake.head();
+        for block in self.snake.body.iter().skip(1) {
+            if head == block {
+                println!("Game: Collision with the snake body");
+                self.play_snd(Sound::GameOver);
+            }
+        }
+    }
+
     pub fn tick(&mut self) -> u32 {
         self.snake.update();
 
-        let level = self.calculate_level();
-        let speed = self.calculate_speed();
-        let score = self.score;
+        println!(
+            "Game: Tick (score={} level={} speed={})",
+            self.score, self.level, self.speed
+        );
 
-        println!("Game: Tick (score={score} level={level} speed={speed})");
+        self.handle_food_eat();
+        self.handle_collisions();
 
-        // Check if the snake has eaten the food
-        if self.eating_food() {
-            self.snake.eat();
-            self.create_food();
-            self.score += 1;
-            self.play_snd(Sound::Eat);
-        }
-        speed
+        self.speed
     }
 
     pub fn keypress(&mut self, key: Keycode) {
@@ -159,6 +185,7 @@ impl Drawable for Food {
 
         let x = self.position.0 as i32 * self.config.grid_resolution as i32;
         let y = self.position.1 as i32 * self.config.grid_resolution as i32;
+
         canvas.fill_rect(Rect::new(
             x,
             y,
@@ -279,6 +306,8 @@ mod tests {
             food: None,
             snake: Snake::new(config.clone()),
             score: 10,
+            level: 0,
+            speed: 100,
         };
         assert_eq!(game.calculate_speed(), 90);
         let game = Game {
@@ -287,6 +316,8 @@ mod tests {
             food: None,
             snake: Snake::new(config.clone()),
             score: 100,
+            level: 0,
+            speed: 100,
         };
         assert_eq!(game.calculate_speed(), 10);
         let game = Game {
@@ -295,6 +326,8 @@ mod tests {
             food: None,
             snake: Snake::new(config.clone()),
             score: 1000,
+            level: 0,
+            speed: 100,
         };
         assert_eq!(game.calculate_speed(), 10);
     }
