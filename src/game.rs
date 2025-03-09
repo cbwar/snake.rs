@@ -20,13 +20,16 @@ pub struct Game {
     pub score: u32,               // Score of the game
 }
 ///
-/// TODO: Config structure
 /// TODO: Show Score panel
 /// TODO: Handle collision with the snake body
 /// TODO: The snake grows 3 blocks when eating food
 /// TODO: Add walls to the game (map?)
 /// TODO: Handle collision with the walls
 /// TODO: Game over screen
+/// TODO: Pause screen
+/// TODO: Restart game
+/// TODO: Save high score
+/// TODO: Game menu screed
 ///
 ///
 impl Game {
@@ -92,7 +95,6 @@ impl Game {
             None => false,
             Some(ref food) => self.snake.head() == &food.position,
         }
-
     }
 
     /// Play a sound
@@ -114,17 +116,15 @@ impl Game {
     ///
     /// Calculate the speed of the game based on the score
     /// The speed is increased every level
-    /// The starting speed is 100 and the maximum speed is 10
-
+    ///
     fn calculate_speed(&self) -> u32 {
         let level = self.calculate_level();
-        let speed = (self.config.initial_speed as i32
-            - (level as i32 * self.config.speed_increase_per_level as i32))
-            as u32;
-        if speed < self.config.maximum_speed {
+        let speed: i32 = self.config.initial_speed as i32
+            - (level as i32 * self.config.speed_increase_per_level as i32);
+        if speed < self.config.maximum_speed as i32 {
             self.config.maximum_speed
         } else {
-            speed
+            speed as u32
         }
     }
 }
@@ -263,6 +263,41 @@ pub fn run() {
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn test_calculate_speed() {
+        let config = Arc::new(Config {
+            initial_speed: 100,
+            maximum_speed: 10,
+            speed_increase_per_level: 10,
+            score_per_level: 10,
+            ..Config::default()
+        });
+        let game = Game {
+            config: config.clone(),
+            snd: None,
+            food: None,
+            snake: Snake::new(config.clone()),
+            score: 10,
+        };
+        assert_eq!(game.calculate_speed(), 90);
+        let game = Game {
+            config: config.clone(),
+            snd: None,
+            food: None,
+            snake: Snake::new(config.clone()),
+            score: 100,
+        };
+        assert_eq!(game.calculate_speed(), 10);
+        let game = Game {
+            config: config.clone(),
+            snd: None,
+            food: None,
+            snake: Snake::new(config.clone()),
+            score: 1000,
+        };
+        assert_eq!(game.calculate_speed(), 10);
+    }
 
     // #[test]
     // fn test_calculate_game_level() {
