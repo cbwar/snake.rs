@@ -1,13 +1,20 @@
 use std::time::Duration;
 
-use crate::GameMode;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::render::Canvas;
+use sdl2::sys::Window;
+use sdl2::Sdl;
 use sdl2::{rect::Rect, render::WindowCanvas};
 
 struct MenuButton {
     text: String,
     rect: Rect,
+}
+
+pub enum MenuChoice {
+    Play,
+    Exit,
 }
 
 impl MenuButton {
@@ -29,44 +36,21 @@ impl MenuButton {
     }
 }
 
-pub fn run() -> Result<GameMode, String> {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    // let timer_subsystem = sdl_context.timer().unwrap();
+pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, String> {
     let ttf_context = sdl2::ttf::init().unwrap();
-
     let mut font = ttf_context.load_font("resources/COUR.TTF", 20)?;
     font.set_style(sdl2::ttf::FontStyle::BOLD);
 
-    let window: sdl2::video::Window = video_subsystem
-        .window("Snake game", 800, 600)
-        .position_centered()
-        .build()
-        .unwrap();
-
-    let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
+    let mut event_pump = sdl_context.event_pump().unwrap();
     let texture_creator = canvas.texture_creator();
 
-    // Initialize sound system
-    // let (_stream, stream_handle) =
-    //     OutputStream::try_default().expect("Output stream failed to open");
-    // let snd = sound::SoundSystem::new(stream_handle);
-
-    // canvas.set_draw_color(Color::RGB(0, 255, 255));
-    // canvas.clear();
-    // canvas.present();
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    // let mut i = 0;
-
-    let mut mode: GameMode = GameMode::Menu;
-    'running: loop {
+    loop {
         let buttons = vec![
             MenuButton::new("Start Game", 100, 100, 200, 75),
             MenuButton::new("Exit", 100, 200, 200, 75),
         ];
         for button in &buttons {
-
-            let mut color =sdl2::pixels::Color::RGBA(255, 255, 255, 200);
+            let mut color = sdl2::pixels::Color::RGBA(255, 255, 255, 200);
 
             if button.hovered(event_pump.mouse_state().x(), event_pump.mouse_state().y()) {
                 color = sdl2::pixels::Color::RGBA(255, 255, 90, 200);
@@ -85,25 +69,15 @@ pub fn run() -> Result<GameMode, String> {
 
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
-                    mode = GameMode::Exit;
-                    break 'running;
-                }
                 Event::MouseButtonDown { x, y, .. } => {
                     for button in &buttons {
                         if button.clicked(x, y) {
                             match button.text.as_str() {
                                 "Start Game" => {
-                                    mode = GameMode::Game;
-                                    break 'running;
+                                    return Ok(MenuChoice::Play);
                                 }
                                 "Exit" => {
-                                    mode = GameMode::Exit;
-                                    break 'running;
+                                    return Ok(MenuChoice::Exit);
                                 }
                                 _ => {}
                             }
@@ -118,8 +92,4 @@ pub fn run() -> Result<GameMode, String> {
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
-
-    Ok(mode)
-
-
 }

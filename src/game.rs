@@ -12,7 +12,7 @@ use sdl2::{
     keyboard::Keycode,
     pixels::Color,
     rect::Rect,
-    render::WindowCanvas,
+    render::WindowCanvas, Sdl,
 };
 
 #[derive(Debug)]
@@ -230,9 +230,8 @@ impl Drawable for Game {
 ///
 /// Main game loop
 ///
-pub fn run() -> Result<(), String> {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
+pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
+    // let video_subsystem = sdl_context.video().unwrap();
     let timer_subsystem = sdl_context.timer().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
     let _image_context = sdl2::image::init(InitFlag::PNG).unwrap();
@@ -249,17 +248,17 @@ pub fn run() -> Result<(), String> {
         ..Config::default()
     };
 
-    let window: sdl2::video::Window = video_subsystem
-        .window(
-            "Snake game",
-            game_config.grid_size.0 as u32 * game_config.grid_resolution,
-            game_config.grid_size.1 as u32 * game_config.grid_resolution,
-        )
-        .position_centered()
-        .build()
-        .unwrap();
+    // let window: sdl2::video::Window = video_subsystem
+    //     .window(
+    //         "Snake game",
+    //         game_config.grid_size.0 as u32 * game_config.grid_resolution,
+    //         game_config.grid_size.1 as u32 * game_config.grid_resolution,
+    //     )
+    //     .position_centered()
+    //     .build()
+    //     .unwrap();
 
-    let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
+    // let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
     // Initialize sound system
@@ -299,7 +298,7 @@ pub fn run() -> Result<(), String> {
             }
         }
         // The rest of the game loop goes here...
-        game.lock().unwrap().draw(&mut canvas);
+        game.lock().unwrap().draw(canvas);
 
         // render a surface, and convert it to a texture bound to the canvas
         let surface = font
