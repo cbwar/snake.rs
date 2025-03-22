@@ -14,6 +14,42 @@ pub enum Direction {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Block(pub u32, pub u32);
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum FoodType {
+    Cherry,
+    Banana,
+    Apple,
+}
+impl FoodType {
+    pub fn texture(&self) -> String {
+        match self {
+            FoodType::Cherry => "resources/cherry.png".to_string(),
+            FoodType::Banana => "resources/banana.png".to_string(),
+            FoodType::Apple => "resources/apple.png".to_string(),
+        }
+    }
+    pub fn score(&self) -> u32 {
+        match self {
+            FoodType::Cherry => 1,
+            FoodType::Banana => 3,
+            FoodType::Apple => 5,
+        }
+    }
+    pub fn increase(&self) -> u32 {
+        match self {
+            FoodType::Cherry => 2,
+            FoodType::Banana => 5,
+            FoodType::Apple => 8,
+        }
+    }
+    pub fn probality(&self) -> u32 {
+        match self {
+            FoodType::Cherry => 60,
+            FoodType::Banana => 30,
+            FoodType::Apple => 10,
+        }
+    }
+}
 // #[derive(Debug)]
 // pub struct Color {
 //     pub r: u8,
@@ -28,9 +64,9 @@ pub struct Block(pub u32, pub u32);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Snake {
-    pub body: Vec<Block>,      // Snake body position on the screen
-    direction: Direction,  // Direction the snake is moving
-    eat: u32,              // If the snake has eaten the food / grow the snake
+    pub body: Vec<Block>, // Snake body position on the screen
+    direction: Direction, // Direction the snake is moving
+    eat: u32,             // If the snake has eaten the food / grow the snake
 }
 impl Snake {
     pub fn new(config: Arc<Config>) -> Snake {
@@ -98,9 +134,9 @@ impl Snake {
         self.direction = direction;
     }
 
-    pub fn eat(&mut self, config: Arc<Config>) {
-        self.eat += config.size_increase_per_food;
-        println!("Snake: Eating something");
+    pub fn grow(&mut self, count: u32) {
+        println!("Snake: Grow by {}", count);
+        self.eat += count;
     }
 
     pub fn head(&self) -> &Block {
@@ -110,16 +146,29 @@ impl Snake {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Food {
+    pub type_: FoodType, // Food type
     pub position: Block, // Food position on the screen
 }
 impl Food {
     pub fn new(config: Arc<Config>) -> Food {
-        // Randomize the position of the food
+        // Random food type
         use rand::Rng;
+
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(0..config.grid_size.0);
-        let y = rng.gen_range(0..config.grid_size.1);
+        let random_value = rng.gen_range(0..100);
+        let type_ = if random_value < FoodType::Cherry.probality() {
+            FoodType::Cherry
+        } else if random_value < FoodType::Cherry.probality() + FoodType::Banana.probality() {
+            FoodType::Banana
+        } else {
+            FoodType::Apple
+        };
+        // Randomize the position of the food
+        let mut rng = rand::rng();
+        let x = rng.random_range(0..config.grid_size.0);
+        let y = rng.random_range(0..config.grid_size.1);
         Food {
+            type_,
             position: Block(x, y),
         }
     }
@@ -135,7 +184,6 @@ pub struct Config {
     pub starting_position: (u32, u32), // Starting position of the snake
     pub speed_increase_per_level: u32, // Speed increase per level
     pub score_per_level: u32,          // Score per level
-    pub size_increase_per_food: u32,   // Size increase per food
     pub background_color: Color,       // Background color
     pub snake_color: Color,            // Snake color
     pub food_color: Color,             // Food color
@@ -152,7 +200,6 @@ impl Config {
             starting_position: (40, 30),
             speed_increase_per_level: 10,
             score_per_level: 10,
-            size_increase_per_food: 1,
             background_color: Color::RGB(0, 0, 0),
             snake_color: Color::RGB(0, 255, 0),
             food_color: Color::RGB(255, 0, 0),
@@ -253,13 +300,12 @@ mod tests {
             grid_size: (10, 10),
             starting_position: (5, 5),
             initial_size: 1,
-            size_increase_per_food: 3,
             ..Config::default()
         });
         let mut snake = Snake::new(config.clone());
 
         assert_eq!(snake.body[0], Block(5, 5));
-        snake.eat(config.clone());
+        snake.grow(3);
         assert_eq!(snake.eat, 3);
         snake.update(config.clone());
         assert_eq!(snake.body.len(), 2);

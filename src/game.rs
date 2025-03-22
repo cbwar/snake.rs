@@ -61,15 +61,24 @@ impl Game {
     /// Handle food collision
     ///
     fn handle_food_eat(&mut self) {
+
+
         if !self.eating_food() {
             return;
         }
-        self.state.level = self.calculate_level();
-        self.state.speed = self.calculate_speed();
-        self.state.snake.eat(self.config.clone());
-        self.create_food();
-        self.state.score += 1;
-        self.play_snd(Sound::Eat);
+
+        if let Some(ref food ) = self.state.food {
+    
+            self.state.snake.grow(food.type_.increase());
+            self.state.score += food.type_.score();
+            self.play_snd(Sound::Eat);
+            self.state.level = self.calculate_level();
+            self.state.speed = self.calculate_speed();
+
+            self.create_food();
+        }
+
+
     }
 
     /// Handle snake collision
@@ -187,15 +196,11 @@ impl Drawable for Snake {
 }
 impl Drawable for Food {
     fn draw(&self, canvas: &mut WindowCanvas, config: Arc<Config>) {
-        let color = &config.food_color;
-
-        canvas.set_draw_color(*color);
-
         let x = self.position.0 as i32 * config.grid_resolution as i32;
         let y = self.position.1 as i32 * config.grid_resolution as i32;
-
         let t = canvas.texture_creator();
-        let tex = t.load_texture("resources/food.png").unwrap();
+        let filename = self.type_.texture();
+        let tex = t.load_texture(filename).unwrap();
         let r = Rect::new(x, y, config.grid_resolution, config.grid_resolution);
         canvas.copy(&tex, None, r).unwrap();
     }
@@ -238,8 +243,7 @@ pub fn run(
     let game_config = Config {
         initial_speed: 100,
         initial_size: 8,
-        score_per_level: 1,
-        size_increase_per_food: 10,
+        score_per_level: 10,
         grid_resolution: 10,
         ..Config::default()
     };
