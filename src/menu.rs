@@ -83,8 +83,6 @@ pub fn run() -> Result<GameMode, String> {
             canvas.copy(&texture, None, button.rect)?;
         }
 
-
-
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -116,34 +114,6 @@ pub fn run() -> Result<GameMode, String> {
             }
         }
 
-        // i = (i + 1) % 255;
-        // canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
-        // canvas.clear();
-        // for event in event_pump.poll_iter() {
-        //     match event {
-        //         Event::Quit { .. }
-        //         | Event::KeyDown {
-        //             keycode: Some(Keycode::Escape),
-        //             ..
-        //         } => {
-        //             break 'running;
-        //         }
-        //     }
-        // }
-        // The rest of the game loop goes here...
-
-        // render a surface, and convert it to a texture bound to the canvas
-        // let surface = font
-        //     .render(game.lock().unwrap().get_status_text().as_str())
-        //     .blended(Color::RGBA(255, 255, 255, 200))
-        //     .map_err(|e| e.to_string())?;
-        //     .create_texture_from_surface(&surface)
-        //     .map_err(|e| e.to_string())?;
-
-        // let dest = Rect::new(0, 0, surface.width(), surface.height());
-
-        // canvas.copy(&texture, None, Some(dest))?;
-
         canvas.present();
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
@@ -151,17 +121,5 @@ pub fn run() -> Result<GameMode, String> {
 
     Ok(mode)
 
-    // println!("Menu");
-    // println!("1. Start Game");
-    // println!("2. Exit");
-    // let mut input = String::new();
-    // std::io::stdin()
-    //     .read_line(&mut input)
-    //     .map_err(|e| e.to_string())?;
 
-    // match input.trim() {
-    //     "1" => Ok(GameMode::Game),
-    //     "2" => Ok(GameMode::Exit),
-    //     _ => Ok(GameMode::Menu),
-    // }
 }

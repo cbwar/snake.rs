@@ -1,13 +1,11 @@
-mod entity;
-mod sound;
-
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use entity::{Config, Direction, Food, Snake};
+use snake::entity::{Config, Direction, Food, Snake};
 use rodio::OutputStream;
+use snake::sound::{Sound, SoundSystem};
 use sdl2::{
     event::Event,
     image::{InitFlag, LoadTexture},
@@ -16,7 +14,6 @@ use sdl2::{
     rect::Rect,
     render::WindowCanvas,
 };
-use sound::{Sound, SoundSystem};
 
 #[derive(Debug)]
 pub struct Game {
@@ -268,7 +265,7 @@ pub fn run() -> Result<(), String> {
     // Initialize sound system
     let (_stream, stream_handle) =
         OutputStream::try_default().expect("Output stream failed to open");
-    let snd = sound::SoundSystem::new(stream_handle);
+    let snd = SoundSystem::new(stream_handle);
 
     // canvas.set_draw_color(Color::RGB(0, 255, 255));
     // canvas.clear();
