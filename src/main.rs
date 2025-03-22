@@ -10,35 +10,30 @@ enum ScreenState {
 }
 
 fn main() -> Result<(), String> {
-
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    // let timer_subsystem = sdl_context.timer().unwrap();
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
     let window: sdl2::video::Window = video_subsystem
         .window("Snake game", 800, 600)
         .position_centered()
         .build()
-        .unwrap();
+        .map_err(|e| e.to_string())?;
 
-    let mut canvas: WindowCanvas = window.into_canvas().build().unwrap();
-  
+    let mut canvas: WindowCanvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+
     // start on the menu screen
     let mut screen = ScreenState::Menu;
-    let mut choice: Option<MenuChoice> = None;
     let mut continue_game = false;
 
     loop {
-        match screen {
-            ScreenState::Menu => {
-                choice = Some(menu::run(&sdl_context, &mut canvas)?);
-            }
+        let choice = match screen {
+            ScreenState::Menu => Some(menu::run(&sdl_context, &mut canvas)?),
             ScreenState::Game => {
                 game::run(&sdl_context, &mut canvas, continue_game)?;
                 screen = ScreenState::Menu;
-                choice = None;
+                None
             }
-        }
+        };
 
         match choice {
             Some(MenuChoice::NewGame) => {

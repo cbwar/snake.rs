@@ -41,7 +41,7 @@ impl Game {
     fn new(config: Arc<Config>, snd: Option<SoundSystem>, continue_game: bool) -> Self {
         let mut state = GameState::new(config.clone());
         if continue_game == true {
-            state = load_game_state().unwrap();
+            state = load_game_state().unwrap_or(state);
         }
         Game {
             state,
@@ -228,9 +228,9 @@ pub fn run(
     continue_game: bool,
 ) -> Result<(), String> {
     // let video_subsystem = sdl_context.video().unwrap();
-    let timer_subsystem = sdl_context.timer().unwrap();
-    let ttf_context = sdl2::ttf::init().unwrap();
-    let _image_context = sdl2::image::init(InitFlag::PNG).unwrap();
+    let timer_subsystem = sdl_context.timer()?;
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+       let _image_context = sdl2::image::init(InitFlag::PNG)?;
 
     let mut font = ttf_context.load_font("resources/COUR.TTF", 20)?;
     font.set_style(sdl2::ttf::FontStyle::BOLD);
@@ -266,7 +266,7 @@ pub fn run(
     // canvas.set_draw_color(Color::RGB(0, 255, 255));
     // canvas.clear();
     // canvas.present();
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut event_pump = sdl_context.event_pump()?;
     // let mut i = 0;
 
     let game = Arc::new(Mutex::new(Game::new(

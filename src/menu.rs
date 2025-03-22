@@ -43,11 +43,11 @@ impl MenuButton {
 }
 
 pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, String> {
-    let ttf_context = sdl2::ttf::init().unwrap();
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
     let mut font = ttf_context.load_font("resources/COUR.TTF", 20)?;
     font.set_style(sdl2::ttf::FontStyle::BOLD);
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut event_pump = sdl_context.event_pump()?;
     let texture_creator = canvas.texture_creator();
 
     loop {

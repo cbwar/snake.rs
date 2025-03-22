@@ -1,4 +1,5 @@
 /target
+/*.json
 *.dll
 *.lib
 *.pdb
