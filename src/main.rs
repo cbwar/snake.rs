@@ -26,6 +26,7 @@ fn main() -> Result<(), String> {
     // start on the menu screen
     let mut screen = ScreenState::Menu;
     let mut choice: Option<MenuChoice> = None;
+    let mut continue_game = false;
 
     loop {
         match screen {
@@ -33,15 +34,20 @@ fn main() -> Result<(), String> {
                 choice = Some(menu::run(&sdl_context, &mut canvas)?);
             }
             ScreenState::Game => {
-                game::run(&sdl_context, &mut canvas)?;
+                game::run(&sdl_context, &mut canvas, continue_game)?;
                 screen = ScreenState::Menu;
                 choice = None;
             }
         }
 
         match choice {
-            Some(MenuChoice::Play) => {
+            Some(MenuChoice::NewGame) => {
                 screen = ScreenState::Game;
+                continue_game = false;
+            }
+            Some(MenuChoice::Continue) => {
+                screen = ScreenState::Game;
+                continue_game = true;
             }
             Some(MenuChoice::Exit) => {
                 break;

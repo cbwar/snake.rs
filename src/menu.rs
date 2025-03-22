@@ -6,29 +6,35 @@ use sdl2::render::Canvas;
 use sdl2::sys::Window;
 use sdl2::Sdl;
 use sdl2::{rect::Rect, render::WindowCanvas};
+use snake::savegame::can_load_game;
 
 struct MenuButton {
+    id: u32,
     text: String,
     rect: Rect,
+    enabled: bool,
 }
 
 pub enum MenuChoice {
-    Play,
+    Continue,
+    NewGame,
     Exit,
 }
 
 impl MenuButton {
-    pub fn new(text: &str, x: i32, y: i32, w: u32, h: u32) -> Self {
+    pub fn new(id: u32, text: &str, x: i32, y: i32, w: u32, h: u32, enabled: bool) -> Self {
         Self {
+            id,
             text: text.to_string(),
             rect: Rect::new(x, y, w, h),
+            enabled,
         }
     }
     fn clicked(&self, x: i32, y: i32) -> bool {
-        self.rect.contains_point((x, y))
+        self.rect.contains_point((x, y)) && self.enabled
     }
     fn hovered(&self, x: i32, y: i32) -> bool {
-        if self.rect.contains_point((x, y)) {
+        if self.rect.contains_point((x, y)) && self.enabled {
             true
         } else {
             false
@@ -46,14 +52,19 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, S
 
     loop {
         let buttons = vec![
-            MenuButton::new("Start Game", 100, 100, 200, 75),
-            MenuButton::new("Exit", 100, 200, 200, 75),
+            MenuButton::new(10, "Continue Game", 100, 100, 200, 75, can_load_game()),
+            MenuButton::new(20, "New Game", 100, 200, 200, 75, true),
+            MenuButton::new(90, "Exit", 100, 300, 200, 75, true),
         ];
         for button in &buttons {
             let mut color = sdl2::pixels::Color::RGBA(255, 255, 255, 200);
 
             if button.hovered(event_pump.mouse_state().x(), event_pump.mouse_state().y()) {
                 color = sdl2::pixels::Color::RGBA(255, 255, 90, 200);
+            } 
+            
+            if button.enabled == false {
+                color = sdl2::pixels::Color::RGBA(90, 90, 90, 200);
             }
 
             let surface = font
@@ -72,11 +83,14 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, S
                 Event::MouseButtonDown { x, y, .. } => {
                     for button in &buttons {
                         if button.clicked(x, y) {
-                            match button.text.as_str() {
-                                "Start Game" => {
-                                    return Ok(MenuChoice::Play);
+                            match button.id {
+                                10 => {
+                                    return Ok(MenuChoice::Continue);
                                 }
-                                "Exit" => {
+                                20 => {
+                                    return Ok(MenuChoice::NewGame);
+                                }
+                                90 => {
                                     return Ok(MenuChoice::Exit);
                                 }
                                 _ => {}

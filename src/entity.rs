@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use sdl2::pixels::Color;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Up,
     Down,
@@ -10,7 +11,7 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Block(pub u32, pub u32);
 
 // #[derive(Debug)]
@@ -25,12 +26,11 @@ pub struct Block(pub u32, pub u32);
 //     }
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Snake {
-    pub body: Vec<Block>,    // Snake body position on the screen
-    pub config: Arc<Config>, // Game config
-    direction: Direction,    // Direction the snake is moving
-    eat: u32,                // If the snake has eaten the food / grow the snake
+    pub body: Vec<Block>,      // Snake body position on the screen
+    direction: Direction,  // Direction the snake is moving
+    eat: u32,              // If the snake has eaten the food / grow the snake
 }
 impl Snake {
     pub fn new(config: Arc<Config>) -> Snake {
@@ -40,14 +40,13 @@ impl Snake {
                 config.starting_position.0,
                 config.starting_position.1,
             )],
-            config,
             direction: Direction::Left,
             eat,
         }
     }
 
     /// Update the snake position / next tick
-    pub fn update(&mut self) {
+    pub fn update(&mut self, config: Arc<Config>) {
         let Block(head_x, head_y) = self.body[0];
 
         // Create a new head based on the current direction of the snake
@@ -59,14 +58,14 @@ impl Snake {
         };
 
         // handle the snake going out of bounds
-        if new_head.0 >= self.config.grid_size.0 as i32 {
+        if new_head.0 >= config.grid_size.0 as i32 {
             new_head.0 = 0;
         } else if new_head.0 < 0 {
-            new_head.0 = self.config.grid_size.0 as i32 - 1;
-        } else if new_head.1 >= self.config.grid_size.1 as i32 {
+            new_head.0 = config.grid_size.0 as i32 - 1;
+        } else if new_head.1 >= config.grid_size.1 as i32 {
             new_head.1 = 0;
         } else if new_head.1 < 0 {
-            new_head.1 = self.config.grid_size.1 as i32 - 1;
+            new_head.1 = config.grid_size.1 as i32 - 1;
         }
 
         let head_block = Block(new_head.0 as u32, new_head.1 as u32);
@@ -99,8 +98,8 @@ impl Snake {
         self.direction = direction;
     }
 
-    pub fn eat(&mut self) {
-        self.eat += self.config.size_increase_per_food;
+    pub fn eat(&mut self, config: Arc<Config>) {
+        self.eat += config.size_increase_per_food;
         println!("Snake: Eating something");
     }
 
@@ -109,10 +108,9 @@ impl Snake {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Food {
-    pub position: Block,     // Food position on the screen
-    pub config: Arc<Config>, // Game config
+    pub position: Block, // Food position on the screen
 }
 impl Food {
     pub fn new(config: Arc<Config>) -> Food {
@@ -123,7 +121,6 @@ impl Food {
         let y = rng.gen_range(0..config.grid_size.1);
         Food {
             position: Block(x, y),
-            config,
         }
     }
 }
@@ -163,6 +160,29 @@ impl Config {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GameState {
+    pub food: Option<Food>, // Food position on the screen
+    pub snake: Snake,       // Snake
+    pub score: u32,         // Score of the game
+    pub level: u32,         // Level of the game
+    pub speed: u32,         // Speed of the game
+}
+
+impl GameState {
+    pub fn new(config: Arc<Config>) -> GameState {
+        let snake = Snake::new(config.clone());
+        let speed = config.initial_speed;
+        GameState {
+            food: None,
+            snake,
+            score: 0,
+            level: 0,
+            speed,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -189,14 +209,14 @@ mod tests {
             initial_size: 2,
             ..Config::default()
         });
-        let mut snake = Snake::new(config);
+        let mut snake = Snake::new(config.clone());
         assert_eq!(snake.body[0], Block(40, 30));
         assert_eq!(snake.body.len(), 1);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(39, 30));
         assert_eq!(snake.body[1], Block(40, 30));
         assert_eq!(snake.body.len(), 2);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(38, 30));
         assert_eq!(snake.body[1], Block(39, 30));
         assert_eq!(snake.body.len(), 2);
@@ -207,21 +227,21 @@ mod tests {
             initial_size: 2,
             ..Config::default()
         });
-        let mut snake = Snake::new(config);
+        let mut snake = Snake::new(config.clone());
         assert_eq!(snake.body[0], Block(40, 30));
         assert_eq!(snake.body.len(), 1);
         snake.cd(Direction::Up);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(40, 29));
         assert_eq!(snake.body[1], Block(40, 30));
         assert_eq!(snake.body.len(), 2);
         snake.cd(Direction::Right);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(41, 29));
         assert_eq!(snake.body[1], Block(40, 29));
         assert_eq!(snake.body.len(), 2);
         snake.cd(Direction::Down);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(41, 30));
         assert_eq!(snake.body[1], Block(41, 29));
         assert_eq!(snake.body.len(), 2);
@@ -236,23 +256,23 @@ mod tests {
             size_increase_per_food: 3,
             ..Config::default()
         });
-        let mut snake = Snake::new(config);
+        let mut snake = Snake::new(config.clone());
 
         assert_eq!(snake.body[0], Block(5, 5));
-        snake.eat();
+        snake.eat(config.clone());
         assert_eq!(snake.eat, 3);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body.len(), 2);
         assert_eq!(snake.body[0], Block(4, 5));
         assert_eq!(snake.body[1], Block(5, 5));
         assert_eq!(snake.eat, 2);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body.len(), 3);
         assert_eq!(snake.body[0], Block(3, 5));
         assert_eq!(snake.body[1], Block(4, 5));
         assert_eq!(snake.body[2], Block(5, 5));
         assert_eq!(snake.eat, 1);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body.len(), 4);
         assert_eq!(snake.body[0], Block(2, 5));
         assert_eq!(snake.body[1], Block(3, 5));
@@ -269,13 +289,13 @@ mod tests {
             initial_size: 1,
             ..Config::default()
         });
-        let mut snake = Snake::new(config);
+        let mut snake = Snake::new(config.clone());
 
         assert_eq!(snake.body[0], Block(0, 0));
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(9, 0));
         snake.cd(Direction::Up);
-        snake.update();
+        snake.update(config.clone());
         assert_eq!(snake.body[0], Block(9, 9));
     }
     #[test]

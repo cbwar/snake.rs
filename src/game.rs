@@ -3,28 +3,21 @@ use std::{
     time::Duration,
 };
 
-use snake::entity::{Config, Direction, Food, Snake};
 use rodio::OutputStream;
-use snake::sound::{Sound, SoundSystem};
 use sdl2::{
     event::Event,
     image::{InitFlag, LoadTexture},
     keyboard::Keycode,
     pixels::Color,
     rect::Rect,
-    render::WindowCanvas, Sdl,
+    render::WindowCanvas,
+    Sdl,
 };
-
-#[derive(Debug)]
-pub struct Game {
-    pub config: Arc<Config>,      // Game config
-    pub snd: Option<SoundSystem>, // Sound system
-    pub food: Option<Food>,       // Food position on the screen
-    pub snake: Snake,             // Snake
-    pub score: u32,               // Score of the game
-    pub level: u32,               // Level of the game
-    pub speed: u32,               // Speed of the game
-}
+use snake::sound::{Sound, SoundSystem};
+use snake::{
+    entity::{Config, Direction, Food, GameState, Snake},
+    savegame::{load_game_state, save_game_state},
+};
 
 ///
 /// TODO: Handle collision with the snake body
@@ -37,19 +30,23 @@ pub struct Game {
 /// TODO: Save high score
 /// TODO: Game menu screed
 ///
+
+pub struct Game {
+    pub state: GameState,         // Game state
+    pub config: Arc<Config>,      // Game config
+    pub snd: Option<SoundSystem>, // Sound system
+}
+
 impl Game {
-    pub fn new(config: Config, snd: Option<SoundSystem>) -> Game {
-        let config = Arc::new(config);
-        let snake = Snake::new(config.clone());
-        let speed = config.initial_speed;
+    fn new(config: Arc<Config>, snd: Option<SoundSystem>, continue_game: bool) -> Self {
+        let mut state = GameState::new(config.clone());
+        if continue_game == true {
+            state = load_game_state().unwrap();
+        }
         Game {
-            config,
+            state,
+            config: Arc::clone(&config),
             snd,
-            food: None,
-            snake,
-            score: 0,
-            level: 0,
-            speed,
         }
     }
 
@@ -67,11 +64,11 @@ impl Game {
         if !self.eating_food() {
             return;
         }
-        self.level = self.calculate_level();
-        self.speed = self.calculate_speed();
-        self.snake.eat();
+        self.state.level = self.calculate_level();
+        self.state.speed = self.calculate_speed();
+        self.state.snake.eat(self.config.clone());
         self.create_food();
-        self.score += 1;
+        self.state.score += 1;
         self.play_snd(Sound::Eat);
     }
 
@@ -79,8 +76,8 @@ impl Game {
     ///
     /// The snake can't collide with itself
     fn handle_collisions(&mut self) {
-        let head = self.snake.head();
-        for block in self.snake.body.iter().skip(1) {
+        let head = self.state.snake.head();
+        for block in self.state.snake.body.iter().skip(1) {
             if head == block {
                 println!("Game: Collision with the snake body");
                 self.play_snd(Sound::GameOver);
@@ -89,41 +86,41 @@ impl Game {
     }
 
     pub fn tick(&mut self) -> u32 {
-        self.snake.update();
+        self.state.snake.update(self.config.clone());
 
         println!(
             "Game: Tick (score={} level={} speed={})",
-            self.score, self.level, self.speed
+            self.state.score, self.state.level, self.state.speed
         );
 
         self.handle_food_eat();
         self.handle_collisions();
 
-        self.speed
+        self.state.speed
     }
 
     pub fn keypress(&mut self, key: Keycode) {
         match key {
-            Keycode::Up => self.snake.cd(Direction::Up),
-            Keycode::W => self.snake.cd(Direction::Up),
-            Keycode::Down => self.snake.cd(Direction::Down),
-            Keycode::S => self.snake.cd(Direction::Down),
-            Keycode::Left => self.snake.cd(Direction::Left),
-            Keycode::A => self.snake.cd(Direction::Left),
-            Keycode::Right => self.snake.cd(Direction::Right),
-            Keycode::D => self.snake.cd(Direction::Right),
+            Keycode::Up => self.state.snake.cd(Direction::Up),
+            Keycode::W => self.state.snake.cd(Direction::Up),
+            Keycode::Down => self.state.snake.cd(Direction::Down),
+            Keycode::S => self.state.snake.cd(Direction::Down),
+            Keycode::Left => self.state.snake.cd(Direction::Left),
+            Keycode::A => self.state.snake.cd(Direction::Left),
+            Keycode::Right => self.state.snake.cd(Direction::Right),
+            Keycode::D => self.state.snake.cd(Direction::Right),
             _ => {}
         }
     }
 
     pub fn create_food(&mut self) {
-        self.food = Some(Food::new(self.config.clone()));
+        self.state.food = Some(Food::new(self.config.clone()));
     }
 
     pub fn eating_food(&mut self) -> bool {
-        match self.food {
+        match self.state.food {
             None => false,
-            Some(ref food) => self.snake.head() == &food.position,
+            Some(ref food) => self.state.snake.head() == &food.position,
         }
     }
 
@@ -140,7 +137,7 @@ impl Game {
     /// A level is gained every 10 points
     ///
     fn calculate_level(&self) -> u32 {
-        self.score / self.config.score_per_level
+        self.state.score / self.config.score_per_level
     }
 
     ///
@@ -162,61 +159,56 @@ impl Game {
     /// Get the status text of the game
     ///
     fn get_status_text(&self) -> String {
-        format!("Score: {} Level: {}", self.score, self.level)
+        format!("Score: {} Level: {}", self.state.score, self.state.level)
     }
 }
 
 trait Drawable {
-    fn draw(&self, canvas: &mut WindowCanvas);
+    fn draw(&self, canvas: &mut WindowCanvas, config: Arc<Config>);
 }
 impl Drawable for Snake {
-    fn draw(&self, canvas: &mut WindowCanvas) {
-        let color = &self.config.snake_color;
+    fn draw(&self, canvas: &mut WindowCanvas, config: Arc<Config>) {
+        let color = &config.snake_color;
 
         for block in &self.body {
             canvas.set_draw_color(*color);
 
-            let x = block.0 as i32 * self.config.grid_resolution as i32;
-            let y = block.1 as i32 * self.config.grid_resolution as i32;
+            let x = block.0 as i32 * config.grid_resolution as i32;
+            let y = block.1 as i32 * config.grid_resolution as i32;
 
             canvas.fill_rect(Rect::new(
                 x,
                 y,
-                self.config.grid_resolution,
-                self.config.grid_resolution,
+                config.grid_resolution,
+                config.grid_resolution,
             ));
         }
     }
 }
 impl Drawable for Food {
-    fn draw(&self, canvas: &mut WindowCanvas) {
-        let color = &self.config.food_color;
+    fn draw(&self, canvas: &mut WindowCanvas, config: Arc<Config>) {
+        let color = &config.food_color;
 
         canvas.set_draw_color(*color);
 
-        let x = self.position.0 as i32 * self.config.grid_resolution as i32;
-        let y = self.position.1 as i32 * self.config.grid_resolution as i32;
+        let x = self.position.0 as i32 * config.grid_resolution as i32;
+        let y = self.position.1 as i32 * config.grid_resolution as i32;
 
         let t = canvas.texture_creator();
         let tex = t.load_texture("resources/food.png").unwrap();
-        let r = Rect::new(
-            x,
-            y,
-            self.config.grid_resolution,
-            self.config.grid_resolution,
-        );
+        let r = Rect::new(x, y, config.grid_resolution, config.grid_resolution);
         canvas.copy(&tex, None, r).unwrap();
     }
 }
 
 impl Drawable for Game {
-    fn draw(&self, canvas: &mut WindowCanvas) {
-        let color = &self.config.background_color;
+    fn draw(&self, canvas: &mut WindowCanvas, config: Arc<Config>) {
+        let color = &config.background_color;
         canvas.set_draw_color(*color);
         canvas.clear();
-        self.snake.draw(canvas);
-        if let Some(ref food) = self.food {
-            food.draw(canvas);
+        self.state.snake.draw(canvas, config.clone());
+        if let Some(ref food) = self.state.food {
+            food.draw(canvas, config.clone());
         }
     }
 }
@@ -230,7 +222,11 @@ impl Drawable for Game {
 ///
 /// Main game loop
 ///
-pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
+pub fn run(
+    sdl_context: &Sdl,
+    canvas: &mut WindowCanvas,
+    continue_game: bool,
+) -> Result<(), String> {
     // let video_subsystem = sdl_context.video().unwrap();
     let timer_subsystem = sdl_context.timer().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
@@ -247,6 +243,7 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
         grid_resolution: 10,
         ..Config::default()
     };
+    let game_config = Arc::new(game_config);
 
     // let window: sdl2::video::Window = video_subsystem
     //     .window(
@@ -272,7 +269,11 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump().unwrap();
     // let mut i = 0;
 
-    let game = Arc::new(Mutex::new(Game::new(game_config, Some(snd))));
+    let game = Arc::new(Mutex::new(Game::new(
+        game_config.clone(),
+        Some(snd),
+        continue_game,
+    )));
     game.lock().unwrap().setup();
 
     let _timer = timer_subsystem.add_timer(0, Box::new(|| game.lock().unwrap().tick()));
@@ -287,7 +288,11 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => break 'running,
+                } => {
+                    save_game_state(&game.lock().unwrap().state)
+                        .expect("Failed to save game state");
+                    break 'running;
+                }
                 _ => {
                     if let Event::KeyDown { keycode, .. } = event {
                         if let Some(key) = keycode {
@@ -298,7 +303,7 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<(), String> {
             }
         }
         // The rest of the game loop goes here...
-        game.lock().unwrap().draw(canvas);
+        game.lock().unwrap().draw(canvas, game_config.clone());
 
         // render a surface, and convert it to a texture bound to the canvas
         let surface = font
@@ -337,31 +342,37 @@ mod tests {
         let game = Game {
             config: config.clone(),
             snd: None,
-            food: None,
-            snake: Snake::new(config.clone()),
-            score: 10,
-            level: 0,
-            speed: 100,
+            state: GameState {
+                food: None,
+                snake: Snake::new(config.clone()),
+                score: 10,
+                level: 0,
+                speed: 100,
+            },
         };
         assert_eq!(game.calculate_speed(), 90);
         let game = Game {
             config: config.clone(),
             snd: None,
-            food: None,
-            snake: Snake::new(config.clone()),
-            score: 100,
-            level: 0,
-            speed: 100,
+            state: GameState {
+                food: None,
+                snake: Snake::new(config.clone()),
+                score: 100,
+                level: 0,
+                speed: 100,
+            },
         };
         assert_eq!(game.calculate_speed(), 10);
         let game = Game {
             config: config.clone(),
             snd: None,
-            food: None,
-            snake: Snake::new(config.clone()),
-            score: 1000,
-            level: 0,
-            speed: 100,
+            state: GameState {
+                food: None,
+                snake: Snake::new(config.clone()),
+                score: 1000,
+                level: 0,
+                speed: 100,
+            },
         };
         assert_eq!(game.calculate_speed(), 10);
     }
