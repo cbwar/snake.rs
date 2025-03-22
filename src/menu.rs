@@ -54,7 +54,8 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, S
         let buttons = vec![
             MenuButton::new(10, "Continue Game", 100, 100, 200, 75, can_load_game()),
             MenuButton::new(20, "New Game", 100, 200, 200, 75, true),
-            MenuButton::new(90, "Exit", 100, 300, 200, 75, true),
+            MenuButton::new(30, "High scores", 100, 300, 200, 75, false),
+            MenuButton::new(90, "Exit", 100, 400, 200, 75, true),
         ];
         for button in &buttons {
             let mut color = sdl2::pixels::Color::RGBA(255, 255, 255, 200);
@@ -80,6 +81,15 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, S
 
         for event in event_pump.poll_iter() {
             match event {
+                
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    return Ok(MenuChoice::Exit);
+                }
+
                 Event::MouseButtonDown { x, y, .. } => {
                     for button in &buttons {
                         if button.clicked(x, y) {
