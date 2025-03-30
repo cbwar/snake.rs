@@ -4,7 +4,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::Sdl;
 use sdl2::{rect::Rect, render::WindowCanvas};
-use snake::savegame::can_load_game;
+use snake::savegame::savegame_exists;
 
 struct MenuButton {
     id: u32,
@@ -50,7 +50,7 @@ pub fn run(sdl_context: &Sdl, canvas: &mut WindowCanvas) -> Result<MenuChoice, S
 
     loop {
         let buttons = vec![
-            MenuButton::new(10, "Continue Game", 100, 100, 200, 75, can_load_game()),
+            MenuButton::new(10, "Continue Game", 100, 100, 200, 75, savegame_exists()),
             MenuButton::new(20, "New Game", 100, 200, 200, 75, true),
             MenuButton::new(30, "High scores", 100, 300, 200, 75, false),
             MenuButton::new(90, "Exit", 100, 400, 200, 75, true),

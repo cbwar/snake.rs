@@ -13,10 +13,13 @@ use sdl2::{
     render::WindowCanvas,
     Sdl,
 };
-use snake::sound::{Sound, SoundSystem};
 use snake::{
     entity::{Config, Direction, Food, GameState, Snake},
     savegame::{load_game_state, save_game_state},
+};
+use snake::{
+    savegame::delete_save,
+    sound::{Sound, SoundSystem},
 };
 
 ///
@@ -84,7 +87,9 @@ impl Game {
         for block in self.state.snake.body.iter().skip(1) {
             if head == block {
                 println!("Game: Collision with the snake body");
+                self.state.game_over = true;
                 self.play_snd(Sound::GameOver);
+                delete_save().expect("Failed to delete save game");
             }
         }
     }
@@ -100,6 +105,9 @@ impl Game {
         self.handle_food_eat();
         self.handle_collisions();
 
+        if self.state.game_over {
+            return 0;
+        }
         self.state.speed
     }
 
@@ -130,6 +138,7 @@ impl Game {
 
     /// Play a sound
     pub fn play_snd(&self, sound: Sound) {
+        println!("Game: Play sound {:?}", sound);
         match self.snd {
             None => return,
             Some(ref snd) => snd.play_snd(sound).expect("Failed to play sound"),
@@ -275,7 +284,10 @@ pub fn run(
     )));
     game.lock().unwrap().setup();
 
-    let _timer = timer_subsystem.add_timer(0, Box::new(|| game.lock().unwrap().tick()));
+    let _timer;
+    if !game.lock().unwrap().state.game_over {
+        _timer = timer_subsystem.add_timer(0, Box::new(|| game.lock().unwrap().tick()));
+    }
 
     'running: loop {
         // i = (i + 1) % 255;
@@ -288,8 +300,10 @@ pub fn run(
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    save_game_state(&game.lock().unwrap().state)
-                        .expect("Failed to save game state");
+                    if !game.lock().unwrap().state.game_over {
+                        save_game_state(&game.lock().unwrap().state)
+                            .expect("Failed to save game state");
+                    }
                     break 'running;
                 }
                 _ => {
@@ -314,11 +328,22 @@ pub fn run(
             .map_err(|e| e.to_string())?;
 
         let dest = Rect::new(0, 0, surface.width(), surface.height());
-
         canvas.copy(&texture, None, Some(dest))?;
 
-        canvas.present();
+        if game.lock().unwrap().state.game_over {
+            let surface = font
+                .render("Game Over")
+                .blended(Color::RGBA(255, 255, 255, 200))
+                .map_err(|e| e.to_string())?;
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
 
+            let dest = Rect::new(380, 280, surface.width(), surface.height());
+            canvas.copy(&texture, None, Some(dest))?;
+        }
+
+        canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
@@ -348,6 +373,7 @@ mod tests {
                 score: 10,
                 level: 0,
                 speed: 100,
+                game_over: false,
             },
         };
         assert_eq!(game.calculate_speed(), 90);
@@ -360,6 +386,7 @@ mod tests {
                 score: 100,
                 level: 0,
                 speed: 100,
+                game_over: false,
             },
         };
         assert_eq!(game.calculate_speed(), 10);
@@ -372,6 +399,7 @@ mod tests {
                 score: 1000,
                 level: 0,
                 speed: 100,
+                game_over: false,
             },
         };
         assert_eq!(game.calculate_speed(), 10);

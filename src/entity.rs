@@ -214,6 +214,7 @@ pub struct GameState {
     pub score: u32,         // Score of the game
     pub level: u32,         // Level of the game
     pub speed: u32,         // Speed of the game
+    pub game_over: bool,    // Game over flag
 }
 
 impl GameState {
@@ -226,6 +227,7 @@ impl GameState {
             score: 0,
             level: 0,
             speed,
+            game_over: false,
         }
     }
 }

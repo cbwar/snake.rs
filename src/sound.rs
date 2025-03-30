@@ -24,9 +24,9 @@ impl Debug for SoundSystem {
 impl SoundSystem {
     pub fn new(stream_handle: OutputStreamHandle) -> SoundSystem {
         let sounds = HashMap::from([
-            (Sound::Start, String::from("resources/eat.ogg")),
+            (Sound::Start, String::from("resources/start.ogg")),
             (Sound::Eat, String::from("resources/eat.ogg")),
-            (Sound::GameOver, String::from("resources/eat.ogg")),
+            (Sound::GameOver, String::from("resources/gameover.ogg")),
         ]);
         SoundSystem {
             stream_handle: Box::new(stream_handle),
