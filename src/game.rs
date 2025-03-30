@@ -61,14 +61,11 @@ impl Game {
     /// Handle food collision
     ///
     fn handle_food_eat(&mut self) {
-
-
         if !self.eating_food() {
             return;
         }
 
-        if let Some(ref food ) = self.state.food {
-    
+        if let Some(ref food) = self.state.food {
             self.state.snake.grow(food.type_.increase());
             self.state.score += food.type_.score();
             self.play_snd(Sound::Eat);
@@ -77,8 +74,6 @@ impl Game {
 
             self.create_food();
         }
-
-
     }
 
     /// Handle snake collision
@@ -185,7 +180,7 @@ impl Drawable for Snake {
             let x = block.0 as i32 * config.grid_resolution as i32;
             let y = block.1 as i32 * config.grid_resolution as i32;
 
-            canvas.fill_rect(Rect::new(
+            let _ = canvas.fill_rect(Rect::new(
                 x,
                 y,
                 config.grid_resolution,
@@ -235,7 +230,7 @@ pub fn run(
     // let video_subsystem = sdl_context.video().unwrap();
     let timer_subsystem = sdl_context.timer()?;
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-       let _image_context = sdl2::image::init(InitFlag::PNG)?;
+    let _image_context = sdl2::image::init(InitFlag::PNG)?;
 
     let mut font = ttf_context.load_font("resources/COUR.TTF", 20)?;
     font.set_style(sdl2::ttf::FontStyle::BOLD);
@@ -330,6 +325,7 @@ pub fn run(
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

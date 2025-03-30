@@ -1,5 +1,4 @@
 use crate::entity::GameState;
-use serde::{Deserialize, Serialize};
 
 const CURRENT_SAVE_FILE: &str = "savegame.json";
 

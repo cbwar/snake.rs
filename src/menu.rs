@@ -2,8 +2,6 @@ use std::time::Duration;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::render::Canvas;
-use sdl2::sys::Window;
 use sdl2::Sdl;
 use sdl2::{rect::Rect, render::WindowCanvas};
 use snake::savegame::can_load_game;

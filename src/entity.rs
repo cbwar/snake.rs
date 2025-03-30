@@ -154,8 +154,8 @@ impl Food {
         // Random food type
         use rand::Rng;
 
-        let mut rng = rand::thread_rng();
-        let random_value = rng.gen_range(0..100);
+        let mut rng = rand::rng();
+        let random_value = rng.random_range(0..100);
         let type_ = if random_value < FoodType::Cherry.probality() {
             FoodType::Cherry
         } else if random_value < FoodType::Cherry.probality() + FoodType::Banana.probality() {
@@ -351,9 +351,7 @@ mod tests {
             ..Config::default()
         });
         let food = Food::new(config.clone());
-        assert_eq!(food.position.0 >= 0, true);
         assert_eq!(food.position.0 < config.grid_size.0, true);
-        assert_eq!(food.position.1 >= 0, true);
         assert_eq!(food.position.1 < config.grid_size.1, true);
     }
     #[test]
