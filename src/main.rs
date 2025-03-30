@@ -9,6 +9,17 @@ enum ScreenState {
     Game,
 }
 
+
+///
+/// TODO: multiple food in the map
+/// TODO: Food timeout
+/// TODO: Add walls to the game (map?)
+/// TODO: Handle collision with the walls
+/// TODO: Pause screen
+/// TODO: Restart game
+/// TODO: Save high score
+///
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;

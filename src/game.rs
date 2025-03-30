@@ -22,17 +22,6 @@ use snake::{
     sound::{Sound, SoundSystem},
 };
 
-///
-/// TODO: Handle collision with the snake body
-/// TODO: The snake grows 3 blocks when eating food
-/// TODO: Add walls to the game (map?)
-/// TODO: Handle collision with the walls
-/// TODO: Game over screen
-/// TODO: Pause screen
-/// TODO: Restart game
-/// TODO: Save high score
-/// TODO: Game menu screed
-///
 
 pub struct Game {
     pub state: GameState,         // Game state
